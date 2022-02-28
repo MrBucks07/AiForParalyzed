@@ -1,11 +1,14 @@
+# Author : Kartik Panchal
 # required dependency
+from time import sleep
 import cv2
-import numpy as np
+import serial
 from cvpackage import FaceMeshDetectionModule, commonFunction
 
 
 # *******************
 
+# function to draw buttons
 def drawButtons(image, btnList):
     for button in btnList:
         x, y = button.pos
@@ -16,6 +19,7 @@ def drawButtons(image, btnList):
     return image
 
 
+# class to set button initial properties
 class Button:
     def __init__(self, pos, size, text):
         self.pos = pos
@@ -23,9 +27,10 @@ class Button:
         self.text = text
 
 
+# button list
 buttonList = []
-msgList = ["Hii", "walk", "music", "sleep"]
-selected = 0
+# message list
+msgList = ["LON", "WALK", "MUSIC", "LOFF"]
 for i, msg in enumerate(msgList):
     buttonList.append(Button((i * 120 + 10, 10), (100, 60), msgList[i]))
 
@@ -35,156 +40,20 @@ faceDetector = FaceMeshDetectionModule.MbFaceMeshDetector(
     iMaxFaces=1,
     iMinDetectionCon=0.7
 )
+# serial obj to communicate with arduino
+serialCom = serial.Serial(port="COM4", baudrate=9600, bytesize=8)
+data = ""
+send = False
 
-# face lm near eyes list
-# lmList = [22, 23, 24, 26, 110, 157, 158, 159, 160, 161, 130, 243, ]
-lmList = [130, 243, 27, 23, 463, 359, 257, 253]
-
-lenRigList = []
-lenLefList = []
-avgLef = 0
-avgRig = 0
-counter = 0
-selected = 0
-count = 0
-# when camera input is opened
-# while camInput.isOpened():
-#     success, images = camInput.read()
-#     # images = btn.drawButton(images)
-#     if success:
-#         images, faces = faceDetector.detectFaces(images, draw=True)
-#
-#         # drawing points on face
-#         if faces:
-#             face = faces[0]
-#             for lm in lmList:
-#                 cv2.circle(images, face[lm], 2, (255, 0, 0), 2, cv2.FILLED)
-#
-#             # right dist
-#             lefUp = face[159]
-#             lefDown = face[23]
-#             lefRight = face[130]
-#             lefLeft = face[243]
-#             cv2.line(images, lefUp, lefDown, (0, 255, 0), 2, cv2.FILLED)
-#             cv2.line(images, lefLeft, lefRight, (0, 255, 0), 2, cv2.FILLED)
-#             lenLefVer = commonFunction.getDistance(point1=lefUp, point2=lefDown)
-#             lenLefHor = commonFunction.getDistance(point1=lefLeft, point2=lefRight)
-#
-#             # left dist
-#             rigUp = face[257]
-#             rigDown = face[253]
-#             rigLeft = face[463]
-#             rigRight = face[359]
-#             cv2.line(images, rigUp, rigDown, (0, 0, 255), 2, cv2.FILLED)
-#             cv2.line(images, rigLeft, rigRight, (0, 0, 255), 2, cv2.FILLED)
-#             lenRigVer = commonFunction.getDistance(point1=rigUp, point2=rigDown)
-#             lenRigHor = commonFunction.getDistance(point1=rigLeft, point2=rigRight)
-#
-#             lenRig = int((lenRigVer / lenRigHor) * 100)
-#             lenLef = int((lenLefVer / lenLefHor) * 100)
-#             # print(f"left : {lenLef} and right : {lenRig}")
-#
-#             # appending five values and taking average for left eye
-#             lenLefList.append(lenLef)
-#             # appending five values and taking average for right eye
-#             lenRigList.append(lenRig)
-#
-#             if len(lenLefList) > 5:
-#                 lenLefList.pop(0)
-#             avgLef = sum(lenLefList) / len(lenLefList)
-#
-#             if len(lenRigList) > 5:
-#                 lenRigList.pop(0)
-#             avgRig = sum(lenRigList) / len(lenRigList)
-#
-#             # print(f"left : {avgLef} and right : {avgRig}")
-#
-#             if avgLef < 39:
-#                 count = count + 1
-#                 cv2.putText(images, f" RightBlink {count}", (100, 100), cv2.FONT_ITALIC, 3, (255, 255, 255), 3)
-#                 counter = 1
-#                 # print(avgLef)
-#                 # if selected == 0:
-#                 #     selected = 1
-#                 #     counter = 2
-#                 # if counter != 0:
-#                 #     counter += 1
-#                 #     if counter > 10:
-#                 #         counter = 0
-#                 #
-#                 # if selected == 1:
-#                 #     selected = 2
-#                 # if counter != 0:
-#                 #     counter += 1
-#                 #     if counter > 10:
-#                 #         counter = 0
-#                 #
-#                 # if selected == 2:
-#                 #     selected = 3
-#                 # if counter != 0:
-#                 #     counter += 1
-#                 #     if counter > 10:
-#                 #         counter = 0
-#                 # cv2.putText(images, "RIGHT", (100, 100), cv2.FONT_ITALIC, 2, (0, 0, 255), 2)
-#                 # counter = 1
-#
-#             # if avgRig < 39:
-#                 # if selected == 1:
-#                 #     selected = 0
-#                 #     counter = 2
-#                 # if counter != 0:
-#                 #     counter += 1
-#                 #     if counter > 10:
-#                 #         counter = 0
-#                 #
-#                 # if selected == 2:
-#                 #     selected = 1
-#                 #     counter = 2
-#                 # if counter != 0:
-#                 #     counter += 1
-#                 #     if counter > 10:
-#                 #         counter = 0
-#                 #
-#                 # if selected == 3:
-#                 #     selected = 2
-#                 #     counter = 2
-#                 # if counter != 0:
-#                 #     counter += 1
-#                 #     if counter > 10:
-#                 #         counter = 0
-#                 #
-#                 # print(avgRig)
-#                 # cv2.putText(images, "LEFT", (100, 100), cv2.FONT_ITALIC, 2, (0, 0, 255), 2)
-#                 # counter = 1
-#             cv2.putText(images, f" RightBlink {count}", (10, 100), cv2.FONT_ITALIC, 2, (255, 255, 255), 2)
-#             if counter != 0:
-#                 counter += 1
-#                 if counter > 10:
-#                     counter = 0
-#
-#         if selected == 0:
-#             cv2.rectangle(images, (10 +(120 * 0), 10), (110 +(120 * 0), 70), (0, 0, 0), 10)
-#         if selected == 1:
-#             cv2.rectangle(images, (10 +(120 * 1), 10), (110 +(120 * 1), 70), (0, 0, 0), 10)
-#         if selected == 2:
-#             cv2.rectangle(images, (10 +(120 * 2), 10), (110 +(120 * 2), 70), (0, 0, 0), 10)
-#         if selected == 3:
-#             cv2.rectangle(images, (10 +(120 * 3), 10), (110 +(120 * 3), 70), (0, 0, 0), 10)
-#
-#     # final image output
-#     # images = cv2.flip(images, 1)
-#     images = drawButtons(images, buttonList)
-#     cv2.imshow("WebCam", images)
-#     cv2.waitKey(1)
-
-lefCount = 0
-rigCount = 0
+# important variables
 counter = 0
 lefRatioList = []
 rigRatioList = []
 lefRatioAvg = 0
 rigRatioAvg = 0
 selected = 0
+# *******************
+
 while camInput.isOpened():
     success, images = camInput.read()
 
@@ -233,17 +102,14 @@ while camInput.isOpened():
                 rigRatioList.pop(0)
             rigRatioAvg = sum(rigRatioList) / len(rigRatioList)
 
-            if lefRatioAvg < 18 and rigRatioAvg < 22:
-                print(msgList[selected])
-            # print(f"left : {int(lefRatioAvg)} and right : {int(rigRatioAvg)}")
             if counter == 0:
-                if lefRatioAvg < 18:
-                    if selected > 1:
+                if lefRatioAvg < 17:
+                    if selected > 0:
                         selected = selected - 1
                     counter = 1
 
             if counter == 0:
-                if rigRatioAvg < 22:
+                if rigRatioAvg < 21:
                     if selected < 3:
                         selected = selected + 1
                     counter = 1
@@ -254,6 +120,7 @@ while camInput.isOpened():
 
             # ******************* block end *******************
 
+            # updating selected button according to eye blink
             if selected == 0:
                 cv2.rectangle(images, (10, 10), (110, 70), (0, 0, 0), 10)
             if selected == 1:
@@ -262,9 +129,29 @@ while camInput.isOpened():
                 cv2.rectangle(images, (10 + 240, 10), (110 + 240, 70), (0, 0, 0), 10)
             if selected == 3:
                 cv2.rectangle(images, (10 + 360, 10), (110 + 360, 70), (0, 0, 0), 10)
-        # cv2.rectangle(images, (10 + 120, 10), (110 + 120, 70), (0, 0, 0), 10)
+            # ******************* block end *******************
+
+            # if both eyes are closed perform action
+            if lefRatioAvg < 20 and rigRatioAvg < 22:
+                if selected == 0:
+                    send = False
+                    data = "ON"
+                    if not send:
+                        serialCom.write(data.encode("utf-8"))
+                        send = True
+                        sleep(1.5)
+
+                if selected == 3:
+                    if send:
+                        send = False
+                    data = "OFF"
+                    if not send:
+                        serialCom.write(data.encode("utf-8"))
+                        send = True
+                        sleep(2)
+            # ******************* block end *******************
+
         # final image output
-        # images = cv2.flip(images, 1)
         images = drawButtons(images, buttonList)
         # print(selected)
         cv2.imshow("WebCam", images)
