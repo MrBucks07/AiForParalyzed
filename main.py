@@ -2,11 +2,23 @@
 # required dependency
 from time import sleep
 import cv2
+import numpy as np
 import serial
+import smtplib
 from cvpackage import FaceMeshDetectionModule, commonFunction
 
-
 # *******************
+
+# logic for sending email
+mailServer = smtplib.SMTP("smtp.gmail.com", 587)
+mailServer.starttls()
+mailServer.login("your_email_id", "your_password")
+try:
+    mailServer.sendmail("from_add", "to_email", "message")
+    print("Mail Send")
+except smtplib.SMTPException:
+    print(smtplib.SMTPException)
+
 
 # function to draw buttons
 def drawButtons(image, btnList):
@@ -14,7 +26,7 @@ def drawButtons(image, btnList):
         x, y = button.pos
         w, h = button.size
         cv2.rectangle(images, (x, y), (x + w, y + h), (255, 0, 0), cv2.FILLED)
-        cv2.putText(images, button.text, (x + 5, y + 38), cv2.FONT_ITALIC, 1, (0, 0, 0), 2)
+        cv2.putText(images, button.text, (x + 10, y + 38), cv2.FONT_ITALIC, 1, (0, 0, 0), 2)
 
     return image
 
@@ -30,9 +42,11 @@ class Button:
 # button list
 buttonList = []
 # message list
-msgList = ["LON", "WALK", "MUSIC", "LOFF"]
-for i, msg in enumerate(msgList):
-    buttonList.append(Button((i * 120 + 10, 10), (100, 60), msgList[i]))
+msgList = [["LON", "LOFF", "SLEEP"],
+           ["MUSIC", "WALK", "EME"]]
+for i in range(len(msgList)):
+    for j, msg in enumerate(msgList[i]):
+        buttonList.append(Button(((130 * j) + 10, 10 + (i * 70)), (120, 60), msg))
 
 # reading camera input using cv2
 camInput = cv2.VideoCapture(0)
@@ -41,7 +55,7 @@ faceDetector = FaceMeshDetectionModule.MbFaceMeshDetector(
     iMinDetectionCon=0.7
 )
 # serial obj to communicate with arduino
-serialCom = serial.Serial(port="COM4", baudrate=9600, bytesize=8)
+# serialCom = serial.Serial(port="COM4", baudrate=9600, bytesize=8)
 data = ""
 send = False
 
@@ -110,7 +124,7 @@ while camInput.isOpened():
 
             if counter == 0:
                 if rigRatioAvg < 21:
-                    if selected < 3:
+                    if selected < 5:
                         selected = selected + 1
                     counter = 1
             if counter != 0:
@@ -122,13 +136,17 @@ while camInput.isOpened():
 
             # updating selected button according to eye blink
             if selected == 0:
-                cv2.rectangle(images, (10, 10), (110, 70), (0, 0, 0), 10)
+                cv2.rectangle(images, (10, 10), (130, 70), (0, 0, 0), 10)
             if selected == 1:
-                cv2.rectangle(images, (10 + 120, 10), (110 + 120, 70), (0, 0, 0), 10)
+                cv2.rectangle(images, (10 + 130, 10), (130 + 130, 70), (0, 0, 0), 10)
             if selected == 2:
-                cv2.rectangle(images, (10 + 240, 10), (110 + 240, 70), (0, 0, 0), 10)
+                cv2.rectangle(images, (10 + 260, 10), (130 + 260, 70), (0, 0, 0), 10)
             if selected == 3:
-                cv2.rectangle(images, (10 + 360, 10), (110 + 360, 70), (0, 0, 0), 10)
+                cv2.rectangle(images, (10, 10 + 70), (130, 70 + 70), (0, 0, 0), 10)
+            if selected == 4:
+                cv2.rectangle(images, (10 + 130, 10 + 70), (130 + 130, 70 + 70), (0, 0, 0), 10)
+            if selected == 5:
+                cv2.rectangle(images, (10 + 260, 10 + 70), (130 + 260, 70 + 70), (0, 0, 0), 10)
             # ******************* block end *******************
 
             # if both eyes are closed perform action
@@ -137,7 +155,7 @@ while camInput.isOpened():
                     send = False
                     data = "ON"
                     if not send:
-                        serialCom.write(data.encode("utf-8"))
+                        # serialCom.write(data.encode("utf-8"))
                         send = True
                         sleep(1.5)
 
@@ -146,12 +164,13 @@ while camInput.isOpened():
                         send = False
                     data = "OFF"
                     if not send:
-                        serialCom.write(data.encode("utf-8"))
+                        # serialCom.write(data.encode("utf-8"))
                         send = True
-                        sleep(2)
+                        sleep(1.5)
             # ******************* block end *******************
 
         # final image output
+        # out = np.concatenate((images, mat), axis=0)
         images = drawButtons(images, buttonList)
         # print(selected)
         cv2.imshow("WebCam", images)
