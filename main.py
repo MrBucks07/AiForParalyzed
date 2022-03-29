@@ -6,18 +6,13 @@ import numpy as np
 import serial
 import smtplib
 from cvpackage import FaceMeshDetectionModule, commonFunction
+from twilio.rest import Client
 
 # *******************
 
-# logic for sending email
-mailServer = smtplib.SMTP("smtp.gmail.com", 587)
-mailServer.starttls()
-mailServer.login("your_email_id", "your_password")
-try:
-    mailServer.sendmail("from_add", "to_email", "message")
-    print("Mail Send")
-except smtplib.SMTPException:
-    print(smtplib.SMTPException)
+# logic to send sms using twilio
+accSid = "ACd7c443e0dd312e639d30a03e296cf0aa"
+authToken = "7f2d356aaac5532fdf259da03443a7aa"
 
 
 # function to draw buttons
@@ -43,7 +38,7 @@ class Button:
 buttonList = []
 # message list
 msgList = [["LON", "LOFF", "SLEEP"],
-           ["MUSIC", "WALK", "EME"]]
+           ["MUSIC", "BUZZ", "EME"]]
 for i in range(len(msgList)):
     for j, msg in enumerate(msgList[i]):
         buttonList.append(Button(((130 * j) + 10, 10 + (i * 70)), (120, 60), msg))
@@ -55,12 +50,14 @@ faceDetector = FaceMeshDetectionModule.MbFaceMeshDetector(
     iMinDetectionCon=0.7
 )
 # serial obj to communicate with arduino
-# serialCom = serial.Serial(port="COM4", baudrate=9600, bytesize=8)
+serialCom = serial.Serial(port="COM4", baudrate=9600, bytesize=8)
 data = ""
 send = False
+# on = False
 
 # important variables
 counter = 0
+msgCounter = 0
 lefRatioList = []
 rigRatioList = []
 lefRatioAvg = 0
@@ -116,61 +113,92 @@ while camInput.isOpened():
                 rigRatioList.pop(0)
             rigRatioAvg = sum(rigRatioList) / len(rigRatioList)
 
-            if counter == 0:
-                if lefRatioAvg < 17:
-                    if selected > 0:
-                        selected = selected - 1
-                    counter = 1
-
-            if counter == 0:
-                if rigRatioAvg < 21:
-                    if selected < 5:
-                        selected = selected + 1
-                    counter = 1
-            if counter != 0:
-                counter += 1
-                if counter == 10:
-                    counter = 0
-
-            # ******************* block end *******************
-
-            # updating selected button according to eye blink
-            if selected == 0:
-                cv2.rectangle(images, (10, 10), (130, 70), (0, 0, 0), 10)
-            if selected == 1:
-                cv2.rectangle(images, (10 + 130, 10), (130 + 130, 70), (0, 0, 0), 10)
-            if selected == 2:
-                cv2.rectangle(images, (10 + 260, 10), (130 + 260, 70), (0, 0, 0), 10)
-            if selected == 3:
-                cv2.rectangle(images, (10, 10 + 70), (130, 70 + 70), (0, 0, 0), 10)
-            if selected == 4:
-                cv2.rectangle(images, (10 + 130, 10 + 70), (130 + 130, 70 + 70), (0, 0, 0), 10)
-            if selected == 5:
-                cv2.rectangle(images, (10 + 260, 10 + 70), (130 + 260, 70 + 70), (0, 0, 0), 10)
-            # ******************* block end *******************
-
             # if both eyes are closed perform action
-            if lefRatioAvg < 20 and rigRatioAvg < 22:
+            if lefRatioAvg < 19 and rigRatioAvg < 21:
                 if selected == 0:
                     send = False
                     data = "ON"
                     if not send:
-                        # serialCom.write(data.encode("utf-8"))
+                        serialCom.write(data.encode("utf-8"))
+                        print(data)
                         send = True
-                        sleep(1.5)
+                        sleep(0.6)
 
-                if selected == 3:
+                if selected == 1:
+                    msgCounter = 0
                     if send:
                         send = False
                     data = "OFF"
                     if not send:
-                        # serialCom.write(data.encode("utf-8"))
+                        serialCom.write(data.encode("utf-8"))
+                        print(data)
                         send = True
-                        sleep(1.5)
+                        sleep(0.6)
+
+                if selected == 5:
+                    if msgCounter == 0:
+                        msgCounter = 1
+                        if send:
+                            send = False
+                        if not send:
+                            send = True
+                            client = Client(accSid, authToken)
+                            message = client.messages.create(
+                                from_="+12348039084",
+                                to="+917984881897",
+                                body="Come fast to hospital"
+                            )
+                            print(message)
+                            sleep(1.6)
+
+                if selected == 4:
+                    if send:
+                        send = False
+                    if not send:
+                        data = "BON"
+                        serialCom.write(data.encode("utf-8"))
+                        print("BON")
+                        send = True
+                        sleep(1.6)
+
+            # ******************* block end *******************
+
+            if counter == 0:
+                if lefRatioAvg < 16:
+                    if rigRatioAvg > 18:
+                        if selected > 0:
+                            selected = selected - 1
+                        counter = 1
+
+            if counter == 0:
+                if rigRatioAvg < 20:
+                    if lefRatioAvg > 15:
+                        if selected < 5:
+                            selected = selected + 1
+                        counter = 1
+            if counter != 0:
+                counter += 1
+                if counter == 10:
+                    counter = 0
+            # ******************* block end *******************
+
+            # updating selected button according to eye blink
+            if selected == 0:
+                cv2.rectangle(images, (10, 10), (130, 70), (0, 255, 0), 10)
+            if selected == 1:
+                cv2.rectangle(images, (10 + 130, 10), (130 + 130, 70), (0, 255, 0), 10)
+            if selected == 2:
+                cv2.rectangle(images, (10 + 260, 10), (130 + 260, 70), (0, 255, 0), 10)
+            if selected == 3:
+                cv2.rectangle(images, (10, 10 + 70), (130, 70 + 70), (0, 255, 0), 10)
+            if selected == 4:
+                cv2.rectangle(images, (10 + 130, 10 + 70), (130 + 130, 70 + 70), (0, 255, 0), 10)
+            if selected == 5:
+                cv2.rectangle(images, (10 + 260, 10 + 70), (130 + 260, 70 + 70), (0, 255, 0), 10)
             # ******************* block end *******************
 
         # final image output
-        # out = np.concatenate((images, mat), axis=0)
+        # cv2.flip(images, 1)
         images = drawButtons(images, buttonList)
         # print(selected)
         cv2.imshow("WebCam", images)
