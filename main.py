@@ -11,9 +11,8 @@ from twilio.rest import Client
 # *******************
 
 # logic to send sms using twilio
-accSid = "ACd7c443e0dd312e639d30a03e296cf0aa"
-authToken = "7f2d356aaac5532fdf259da03443a7aa"
-
+accSid = "put your twilio sid here"
+authToken = "put your twilio auth token here"
 
 # function to draw buttons
 def drawButtons(image, btnList):
@@ -144,9 +143,9 @@ while camInput.isOpened():
                             send = True
                             client = Client(accSid, authToken)
                             message = client.messages.create(
-                                from_="+12348039084",
-                                to="+917984881897",
-                                body="Come fast to hospital"
+                                from_="your twilio number",
+                                to="to number",
+                                body="Come fast to hospital."
                             )
                             print(message)
                             sleep(1.6)
